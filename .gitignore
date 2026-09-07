@@ -1,0 +1,12 @@
+# Evidence hygiene
+*.pcap.tmp
+*.log.tmp
+# Raw capture dumps (large, high-volume) — use Git LFS or link externally
+/pcaps/raw/**
+# Curated PCAPs under /attacks/*/pcap/ are intentionally tracked (keep slices <10 MB;
+# use Git LFS if a capture must be full-size)
+# OS noise
+.DS_Store
+Thumbs.db
+# Editor
+*.drawio.bkp
