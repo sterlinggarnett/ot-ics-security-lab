@@ -32,4 +32,24 @@ WHY IT HAPPENED:
 WHAT IT MEANS FOR SECURITY & ARCHITECTURE:
 * **Temporary Management Access vs. Final Architecture**: Enabling host virtual adapters on OT subnets (`VMnet3`) is a temporary bootstrapping measure for initial lab setup. In final Purdue Model architecture, host adapters on OT subnets are disabled to enforce strict zero-trust network boundaries, forcing all management access to pass through DMZ Jump Hosts (`JUMP-01`).
 
+---
+
+### 2026-09-11 — Stage 1.3 — pfSense WebConfigurator & VMware vNIC-to-VMnet Binding Resolution
+
+WHAT I OBSERVED:
+* Initially, pfSense console showed `em0`–`em5` configured with static IPs (`10.10.10.1` through `10.10.53.1`), and Windows host adapters were set to `.2` addresses (`10.10.10.2`, `10.10.20.2`).
+* However, browser access to `https://10.10.20.1` timed out and ICMP ping failed.
+* Running `arp -a` in Windows Command Prompt revealed that the host was not learning a MAC address entry for `10.10.20.1`, proving a Layer 2 link failure.
+* Inspecting `FW-CORE` VM hardware settings revealed that all 6 virtual NICs were set to default generic "Host-only" (attaching them to `VMnet1`), rather than being explicitly mapped to `VMnet2`–`VMnet7`.
+* Once each VM Network Adapter was changed in VMware VM Settings to `Custom: VMnet2` through `Custom: VMnet7`, ARP resolved immediately, ping succeeded with 0% loss, and the pfSense webConfigurator GUI loaded successfully.
+
+WHY IT HAPPENED:
+* **Layer 2 ARP Failure**: `arp -a` failing to resolve a MAC address proved that the issue was at Layer 2 (virtual switch link layer), not Layer 3 IP routing or OS firewalls.
+* **VMware vNIC Binding vs. Virtual Network Editor**: Creating VMnets in VMware Virtual Network Editor and configuring `emX` IPs inside pfSense creates the subnets, but VMware VM hardware settings must explicitly map each virtual NIC to its target `Custom: VMnetX`. Leaving them on default "Host-only" placed all vNICs on VMware's default `VMnet1` bus, isolating pfSense from `VMnet2` and `VMnet3`.
+
+WHAT IT MEANS FOR SECURITY & TROUBLESHOOTING:
+* **Layer 2 Verification Before Layer 7 Diagnosis**: Checking ARP tables (`arp -a`) is an essential diagnostic gate before troubleshooting web services or firewall rules. If ARP fails, Layer 2 is disconnected.
+* **Hardware-to-Software Binding Discipline**: In physical and virtual security architecture, configuring IP addresses and software interfaces is useless if virtual NICs are patched into the wrong virtual switch/VMnet. Explicit vNIC-to-VMnet binding is mandatory to enforce Purdue Model zone isolation.
+
+
 
